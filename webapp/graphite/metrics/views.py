@@ -96,6 +96,12 @@ def find_view(request):
   queryParams = request.GET.copy()
   queryParams.update(request.POST)
 
+  # team_id
+  url = request.get_full_path().split('?')[0]
+  team_id = url.split('/')[-1]
+  if not team_id.isdigit():
+      team_id = None
+
   format = queryParams.get('format', 'treejson')
   local_only = int( queryParams.get('local', 0) )
   wildcards = int( queryParams.get('wildcards', 0) )
@@ -135,7 +141,8 @@ def find_view(request):
       query = '.'.join(query_parts)
 
   try:
-    matches = list( STORE.find(query, fromTime, untilTime, local=local_only) )
+    matches = list( STORE.find(
+        query, fromTime, untilTime, local=local_only, target_prefix=team_id) )
   except:
     log.exception()
     raise

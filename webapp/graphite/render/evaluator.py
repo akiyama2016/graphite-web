@@ -3,9 +3,9 @@ from graphite.render.grammar import grammar
 from graphite.render.datalib import fetchData, TimeSeries
 
 
-def evaluateTarget(requestContext, target):
+def evaluateTarget(requestContext, target, target_prefix=None):
   tokens = grammar.parseString(target)
-  result = evaluateTokens(requestContext, tokens)
+  result = evaluateTokens(requestContext, tokens, target_prefix=target_prefix)
 
   if type(result) is TimeSeries:
     return [result] #we have to return a list of TimeSeries objects
@@ -14,19 +14,20 @@ def evaluateTarget(requestContext, target):
     return result
 
 
-def evaluateTokens(requestContext, tokens, replacements=None):
+def evaluateTokens(
+        requestContext, tokens, replacements=None, target_prefix=None):
   if tokens.template:
     arglist = dict()
     if tokens.template.kwargs:
-      arglist.update(dict([(kwarg.argname, evaluateTokens(requestContext, kwarg.args[0])) for kwarg in tokens.template.kwargs]))
+      arglist.update(dict([(kwarg.argname, evaluateTokens(requestContext, kwarg.args[0], target_prefix=target_prefix)) for kwarg in tokens.template.kwargs]))
     if tokens.template.args:
-      arglist.update(dict([(str(i+1), evaluateTokens(requestContext, arg)) for i, arg in enumerate(tokens.template.args)]))
+      arglist.update(dict([(str(i+1), evaluateTokens(requestContext, arg, target_prefix=target_prefix)) for i, arg in enumerate(tokens.template.args)]))
     if 'template' in requestContext:
       arglist.update(requestContext['template'])
-    return evaluateTokens(requestContext, tokens.template, arglist)
+    return evaluateTokens(requestContext, tokens.template, replacements=arglist, target_prefix=target_prefix)
 
   elif tokens.expression:
-    return evaluateTokens(requestContext, tokens.expression, replacements)
+    return evaluateTokens(requestContext, tokens.expression, replacements=replacements, target_prefix=target_prefix)
 
   elif tokens.pathExpression:
     expression = tokens.pathExpression
@@ -42,7 +43,7 @@ def evaluateTokens(requestContext, tokens, replacements=None):
             return val
         else:
           expression = expression.replace('$'+name, str(replacements[name]))
-    return fetchData(requestContext, expression)
+    return fetchData(requestContext, expression, target_prefix=target_prefix)
 
   elif tokens.call:
     if tokens.call.funcname == 'template':
@@ -51,9 +52,9 @@ def evaluateTokens(requestContext, tokens, replacements=None):
       raise ValueError("invalid template() syntax, only string/numeric arguments are allowed")
 
     func = SeriesFunctions[tokens.call.funcname]
-    args = [evaluateTokens(requestContext, arg, replacements) for arg in tokens.call.args]
+    args = [evaluateTokens(requestContext, arg, replacements=replacements, target_prefix=target_prefix) for arg in tokens.call.args]
     requestContext['args'] = tokens.call.args
-    kwargs = dict([(kwarg.argname, evaluateTokens(requestContext, kwarg.args[0], replacements))
+    kwargs = dict([(kwarg.argname, evaluateTokens(requestContext, kwarg.args[0], replacements=replacements, target_prefix=target_prefix))
                    for kwarg in tokens.call.kwargs])
     try:
       return func(requestContext, *args, **kwargs)

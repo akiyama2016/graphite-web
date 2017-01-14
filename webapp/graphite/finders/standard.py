@@ -23,6 +23,9 @@ class StandardFinder:
     pattern_parts = clean_pattern.split('.')
 
     for root_dir in self.directories:
+      if query.target_prefix:
+        root_dir = os.path.join(root_dir, query.target_prefix) + os.sep
+
       for absolute_path in self._find_paths(root_dir, pattern_parts):
         if basename(absolute_path).startswith('.'):
           continue

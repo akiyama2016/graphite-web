@@ -18,6 +18,7 @@ from . import views
 urlpatterns = [
     url('^index\.json$', views.index_json, name='metrics_index'),
     url('^find/?$', views.find_view, name='metrics_find'),
+    url('^find/with_prefix/\d+$', views.find_view, name='find_with_prefix'),
     url('^expand/?$', views.expand_view, name='metrics_expand'),
     url('^get-metadata/?$', views.get_metadata_view,
         name='metrics_get_metadata'),

@@ -34,8 +34,9 @@ class Store:
     self.remote_stores = [ RemoteStore(host) for host in remote_hosts ]
 
 
-  def find(self, pattern, startTime=None, endTime=None, local=False):
-    query = FindQuery(pattern, startTime, endTime)
+  def find(self, pattern, startTime=None, endTime=None, local=False,
+           target_prefix=None):
+    query = FindQuery(pattern, startTime, endTime, target_prefix)
 
     # Start remote searches
     if not local:
@@ -157,10 +158,11 @@ class Store:
 
 
 class FindQuery:
-  def __init__(self, pattern, startTime, endTime):
+  def __init__(self, pattern, startTime, endTime, target_prefix):
     self.pattern = pattern
     self.startTime = startTime
     self.endTime = endTime
+    self.target_prefix = target_prefix
     self.isExact = is_pattern(pattern)
     self.interval = Interval(float('-inf') if startTime is None else startTime,
                              float('inf') if endTime is None else endTime)

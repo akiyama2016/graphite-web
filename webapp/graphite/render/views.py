@@ -47,6 +47,13 @@ from django.conf import settings
 from django.utils.cache import add_never_cache_headers, patch_response_headers
 
 
+def myHashKey(org_key, team_id):
+  if team_id:
+    return org_key + ':team_id=' + team_id
+  else:
+    return org_key
+
+
 def renderView(request):
   start = time()
   (graphOptions, requestOptions) = parseOptions(request)
@@ -64,7 +71,7 @@ def renderView(request):
 
   # First we check the request cache
   if useCache:
-    requestKey = hashRequest(request)
+    requestKey = myHashKey(hashRequest(request), requestOptions['team_id'])
     cachedResponse = cache.get(requestKey)
     if cachedResponse:
       log.cache('Request-Cache hit [%s]' % requestKey)
@@ -84,7 +91,8 @@ def renderView(request):
           raise ValueError("Invalid target '%s'" % target)
         data.append( (name,value) )
       else:
-        seriesList = evaluateTarget(requestContext, target)
+        seriesList = evaluateTarget(
+            requestContext, target, target_prefix=requestOptions['team_id'])
 
         for series in seriesList:
           func = PieFunctions[requestOptions['pieMode']]
@@ -96,7 +104,8 @@ def renderView(request):
       targets = requestOptions['targets']
       startTime = requestOptions['startTime']
       endTime = requestOptions['endTime']
-      dataKey = hashData(targets, startTime, endTime)
+      dataKey = myHashKey(hashData(targets, startTime, endTime),
+                          requestOptions['team_id'])
       cachedData = cache.get(dataKey)
       if cachedData:
         log.cache("Data-Cache hit [%s]" % dataKey)
@@ -112,7 +121,8 @@ def renderView(request):
         if not target.strip():
           continue
         t = time()
-        seriesList = evaluateTarget(requestContext, target)
+        seriesList = evaluateTarget(requestContext, target,
+                                    target_prefix=requestOptions['team_id'])
         log.rendering("Retrieval of %s took %.6f" % (target, time() - t))
         data.extend(seriesList)
 
@@ -298,6 +308,14 @@ def parseOptions(request):
   # Start with some defaults
   graphOptions = {'width' : 330, 'height' : 250}
   requestOptions = {}
+
+  # team_id
+  url = request.get_full_path().split('?')[0]
+  team_id = url.split('/')[-1]
+  if team_id.isdigit():
+      requestOptions['team_id'] = team_id
+  else:
+      requestOptions['team_id'] = None
 
   graphType = queryParams.get('graphType','line')
   assert graphType in GraphTypes, "Invalid graphType '%s', must be one of %s" % (graphType,GraphTypes.keys())

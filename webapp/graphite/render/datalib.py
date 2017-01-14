@@ -106,13 +106,13 @@ class TimeSeries(list):
 
 
 # Data retrieval API
-def fetchData(requestContext, pathExpr):
+def fetchData(requestContext, pathExpr, target_prefix=None):
   seriesList = {}
   startTime = int( epoch( requestContext['startTime'] ) )
   endTime   = int( epoch( requestContext['endTime'] ) )
 
   def _fetchData(pathExpr,startTime, endTime, requestContext, seriesList):
-    matching_nodes = STORE.find(pathExpr, startTime, endTime, local=requestContext['localOnly'])
+    matching_nodes = STORE.find(pathExpr, startTime, endTime, local=requestContext['localOnly'], target_prefix=target_prefix)
     fetches = [(node, node.fetch(startTime, endTime)) for node in matching_nodes if node.is_leaf]
 
     for node, results in fetches:
