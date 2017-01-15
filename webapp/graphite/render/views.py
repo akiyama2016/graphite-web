@@ -47,9 +47,9 @@ from django.conf import settings
 from django.utils.cache import add_never_cache_headers, patch_response_headers
 
 
-def myHashKey(org_key, team_id):
-  if team_id:
-    return org_key + ':team_id=' + team_id
+def myHashKey(org_key, prefix):
+  if prefix:
+    return org_key + ':prefix=' + prefix
   else:
     return org_key
 
@@ -71,7 +71,7 @@ def renderView(request):
 
   # First we check the request cache
   if useCache:
-    requestKey = myHashKey(hashRequest(request), requestOptions['team_id'])
+    requestKey = myHashKey(hashRequest(request), requestOptions['prefix'])
     cachedResponse = cache.get(requestKey)
     if cachedResponse:
       log.cache('Request-Cache hit [%s]' % requestKey)
@@ -92,7 +92,7 @@ def renderView(request):
         data.append( (name,value) )
       else:
         seriesList = evaluateTarget(
-            requestContext, target, target_prefix=requestOptions['team_id'])
+            requestContext, target, target_prefix=requestOptions['prefix'])
 
         for series in seriesList:
           func = PieFunctions[requestOptions['pieMode']]
@@ -105,7 +105,7 @@ def renderView(request):
       startTime = requestOptions['startTime']
       endTime = requestOptions['endTime']
       dataKey = myHashKey(hashData(targets, startTime, endTime),
-                          requestOptions['team_id'])
+                          requestOptions['prefix'])
       cachedData = cache.get(dataKey)
       if cachedData:
         log.cache("Data-Cache hit [%s]" % dataKey)
@@ -122,7 +122,7 @@ def renderView(request):
           continue
         t = time()
         seriesList = evaluateTarget(requestContext, target,
-                                    target_prefix=requestOptions['team_id'])
+                                    target_prefix=requestOptions['prefix'])
         log.rendering("Retrieval of %s took %.6f" % (target, time() - t))
         data.extend(seriesList)
 
@@ -309,13 +309,13 @@ def parseOptions(request):
   graphOptions = {'width' : 330, 'height' : 250}
   requestOptions = {}
 
-  # team_id
+  # Prefix
+  prefix_str = '/render/with_prefix/'
   url = request.get_full_path().split('?')[0]
-  team_id = url.split('/')[-1]
-  if team_id.isdigit():
-      requestOptions['team_id'] = team_id
+  if url.startswith(prefix_str):
+      requestOptions['prefix'] = url[len(prefix_str):]
   else:
-      requestOptions['team_id'] = None
+      requestOptions['prefix'] = None
 
   graphType = queryParams.get('graphType','line')
   assert graphType in GraphTypes, "Invalid graphType '%s', must be one of %s" % (graphType,GraphTypes.keys())

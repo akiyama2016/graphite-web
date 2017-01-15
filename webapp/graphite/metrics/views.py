@@ -96,11 +96,13 @@ def find_view(request):
   queryParams = request.GET.copy()
   queryParams.update(request.POST)
 
-  # team_id
+  # Prefix
+  prefix_str = '/metrics/find/with_prefix/'
   url = request.get_full_path().split('?')[0]
-  team_id = url.split('/')[-1]
-  if not team_id.isdigit():
-      team_id = None
+  if url.startswith(prefix_str):
+      prefix = url[len(prefix_str):]
+  else:
+      prefix = None
 
   format = queryParams.get('format', 'treejson')
   local_only = int( queryParams.get('local', 0) )
@@ -142,7 +144,7 @@ def find_view(request):
 
   try:
     matches = list( STORE.find(
-        query, fromTime, untilTime, local=local_only, target_prefix=team_id) )
+        query, fromTime, untilTime, local=local_only, target_prefix=prefix) )
   except:
     log.exception()
     raise
